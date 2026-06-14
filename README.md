@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+﻿# 我的網站
 
-## Getting Started
+使用 Next.js + TypeScript + Tailwind CSS + Prisma + PostgreSQL 建立的網站。
 
-First, run the development server:
+## 技術棧
+
+- **Next.js** - React 全端框架
+- **TypeScript** - 型別安全的 JavaScript
+- **Tailwind CSS** - 實用優先的 CSS 框架
+- **Prisma** - 型別安全的資料庫 ORM
+- **PostgreSQL** - 關聯式資料庫
+
+## 開始使用
+
+### 1. 安裝依賴
+
+```bash
+npm install
+```
+
+### 2. 設定資料庫
+
+編輯 `.env` 檔案，設定你的 PostgreSQL 連線字串：
+
+```
+DATABASE_URL="postgresql://使用者名稱:密碼@主機:埠號/資料庫名稱"
+```
+
+### 3. 建立資料庫結構
+
+```bash
+npm run db:push    # 推送 schema 到資料庫
+# 或
+npm run db:migrate # 建立遷移檔案
+```
+
+### 4. 啟動開發伺服器
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+打開 [http://localhost:3000](http://localhost:3000) 查看結果。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 常用指令
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| 指令 | 說明 |
+|------|------|
+| `npm run dev` | 啟動開發伺服器 |
+| `npm run build` | 建置生產版本 |
+| `npm run start` | 啟動生產伺服器 |
+| `npm run lint` | 執行 ESLint |
+| `npm run db:push` | 推送 schema 到資料庫 |
+| `npm run db:migrate` | 建立資料庫遷移 |
+| `npm run db:studio` | 開啟 Prisma Studio |
 
-## Learn More
+## 專案結構
 
-To learn more about Next.js, take a look at the following resources:
+```
+├── prisma/
+│   └── schema.prisma    # 資料庫模型定義（含 generator output 設定）
+├── prisma.config.ts     # Prisma 7 CLI 配置（datasource URL）
+├── src/
+│   ├── app/             # Next.js App Router 頁面
+│   ├── generated/
+│   │   └── prisma/      # 自動生成的 Prisma Client（勿手動編輯）
+│   ├── lib/
+│   │   └── prisma.ts    # Prisma Client 單例（使用 driver adapter）
+│   └── ...
+├── .env                 # 環境變數（含資料庫連線）
+└── package.json
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Prisma 7 重要事項
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+> **Prisma 7 與舊版差異较大，請注意以下事項：**
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Driver Adapter**：Prisma 7 不再使用 Rust engine，改用 driver adapter（`@prisma/adapter-pg`）連接資料庫
+2. **生成位置**：Prisma Client 生成至 `src/generated/prisma/`（在 `schema.prisma` 的 `generator.output` 中指定）
+3. **匯入路徑**：使用 `import { PrismaClient } from "@/generated/prisma"`，**不是** `@prisma/client`
+4. **`schema.prisma`**：`datasource` 區塊不再包含 `url`（由 `prisma.config.ts` 管理）
+5. **修改模型後**：記得執行 `npx prisma generate` 重新生成 Client
