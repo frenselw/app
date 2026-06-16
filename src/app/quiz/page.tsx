@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { generateQuiz } from "@/data/pinyin";
 import type { QuizQuestion } from "@/data/pinyin";
+import { saveQuizRecord, type QuizAnswerRecord } from "@/lib/quiz-history";
 
 export default function QuizPage() {
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
@@ -12,6 +13,8 @@ export default function QuizPage() {
   const [showResult, setShowResult] = useState(false);
   const [score, setScore] = useState(0);
   const [answers, setAnswers] = useState<boolean[]>([]);
+  const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
+  const hasSavedRef = useRef(false);
 
   const startQuiz = () => {
     setQuestions(generateQuiz());
@@ -20,6 +23,8 @@ export default function QuizPage() {
     setShowResult(false);
     setScore(0);
     setAnswers([]);
+    setSelectedAnswers([]);
+    hasSavedRef.current = false;
   };
 
   const handleSelect = (index: number) => {
@@ -30,7 +35,29 @@ export default function QuizPage() {
     const isCorrect = index === questions![currentIndex].answer;
     if (isCorrect) setScore(score + 1);
     setAnswers([...answers, isCorrect]);
+    setSelectedAnswers([...selectedAnswers, index]);
   };
+
+  // 测验完成时自动储存记录
+  useEffect(() => {
+    if (
+      !hasSavedRef.current &&
+      questions &&
+      currentIndex >= questions.length &&
+      selectedAnswers.length === questions.length
+    ) {
+      hasSavedRef.current = true;
+      const records: QuizAnswerRecord[] = questions.map((q, i) => ({
+        question: q.question,
+        options: q.options,
+        correctAnswer: q.answer,
+        selectedAnswer: selectedAnswers[i],
+        explanation: q.explanation,
+        isCorrect: selectedAnswers[i] === q.answer,
+      }));
+      saveQuizRecord(score, questions.length, records);
+    }
+  }, [currentIndex, questions, selectedAnswers, score]);
 
   const handleNext = () => {
     if (currentIndex + 1 >= questions!.length) {
@@ -138,7 +165,7 @@ export default function QuizPage() {
           ))}
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex flex-wrap justify-center gap-4">
           <button
             onClick={startQuiz}
             className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-8 py-3 font-semibold text-white shadow-lg shadow-emerald-200 transition-all hover:bg-emerald-600"
@@ -150,6 +177,12 @@ export default function QuizPage() {
             className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-8 py-3 font-semibold text-gray-600 transition-colors hover:bg-gray-200"
           >
             📚 去复习
+          </Link>
+          <Link
+            href="/history"
+            className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-8 py-3 font-semibold text-blue-600 transition-colors hover:bg-blue-100"
+          >
+            📊 查看记录
           </Link>
         </div>
       </div>

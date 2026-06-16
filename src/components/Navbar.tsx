@@ -8,6 +8,7 @@ const navLinks = [
   { href: "/", label: "首页" },
   { href: "/learn", label: "学习" },
   { href: "/quiz", label: "测验" },
+  { href: "/history", label: "记录" },
 ];
 
 export default function Navbar() {
