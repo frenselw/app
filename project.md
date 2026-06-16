@@ -49,8 +49,10 @@ elegant-clock-3/
 │   │   │   ├── finals/page.tsx       # 韵母学习页
 │   │   │   ├── syllables/page.tsx    # 整体认读音节学习页
 │   │   │   └── tones/page.tsx        # 声调学习页
-│   │   └── quiz/
-│   │       └── page.tsx              # 互动测验页
+│   │   ├── quiz/
+│   │   │   └── page.tsx              # 互动测验页
+│   │   └── history/
+│   │       └── page.tsx              # 测验记录页（成绩历史与逐题复习）
 │   │
 │   ├── components/                   # 可重用元件
 │   │   ├── Navbar.tsx                # 导览列（含移动端选单）
@@ -62,7 +64,8 @@ elegant-clock-3/
 │   │   └── pinyin.ts                 # 拼音资料库与测验出题引擎
 │   │
 │   ├── lib/
-│   │   └── prisma.ts                 # Prisma Client 单例（预留扩展用）
+│   │   ├── prisma.ts                 # Prisma Client 单例（预留扩展用）
+│   │   └── quiz-history.ts           # 测验记录工具库（localStorage 储存 / 统计）
 │   │
 │   └── generated/                    # Prisma 自动生成的程式码
 │       └── prisma/
@@ -74,6 +77,8 @@ elegant-clock-3/
 ├── .env                              # 环境变数
 ├── next.config.ts                    # Next.js 设定
 ├── tsconfig.json                     # TypeScript 设定
+├── docs/
+│   └── project.md                   # 测验记录功能开发 Checklist
 ├── package.json                      # 专案依赖与脚本
 └── README.md                         # 专案说明
 ```
@@ -138,7 +143,33 @@ elegant-clock-3/
   - SVG 圆环图表显示得分比例
   - 答题明细一览（✓/✕）
   - 依分数显示鼓励讯息
-  - 提供「再来一次」与「去复习」按钮
+  - 提供「再来一次」、「去复习」与「查看记录」按钮
+
+### 8. 📊 测验记录页（`/history`）
+
+记录使用者每次测验的成绩与逐题作答明细，方便追踪学习进度与复习错题。
+
+**技术决策：使用浏览器 `localStorage`（非资料库）**
+- 免设定、即开即用、无需后端 API
+- 资料仅存在当前浏览器，换装置 / 清快取会消失
+- 未来可无痛迁移至 Prisma + PostgreSQL（串接帐号系统时）
+
+**功能特色：**
+
+- **自动记录**：测验完成时自动储存（含每题的题目、选项、正确答案、你的答案、解释）
+- **统计摘要**（4 格卡片）：
+  - 📝 测验次数
+  - 📈 平均分数
+  - 🏆 最佳成绩
+  - 🆕 最近成绩
+- **记录列表**：每笔显示分数圆圈、正确 / 错误数、日期时间
+- **展开逐题明细**：点击记录可展开查看：
+  - ✅/❌ 正确或错误标记
+  - 题目内容、正确答案、你的答案（答错时显示）
+  - 💡 解释说明
+  - 答题概况（✓/✕ 一览）
+- **记录管理**：删除单笔记录 / 清除全部记录（含确认对话框）
+- **记录上限**：最多保留 50 笔，超过自动截断
 
 ---
 
@@ -229,6 +260,23 @@ Props:
 - 每题提供 4 个选项与详细说明
 - 每次调用结果不同，确保测验的多样性
 
+### 测验记录工具库（`src/lib/quiz-history.ts`）
+
+使用浏览器 `localStorage` 储存与读取测验记录，SSR 安全（含可用性检查）。
+
+```
+API:
+  - saveQuizRecord(score, total, answers)  // 储存一笔记录
+  - getQuizHistory()                        // 取得所有记录（最新在前）
+  - getQuizStats()                          // 统计摘要（次数 / 平均 / 最佳 / 最近）
+  - deleteQuizRecord(id)                    // 删除单笔记录
+  - clearQuizHistory()                      // 清除全部记录
+  - formatDate(iso)                         // ISO 日期格式化
+```
+
+- 记录上限：最多 50 笔，超过自动截断
+- 每笔记录包含完整题目快照，可在事后复习
+
 ---
 
 ## 📊 资料结构
@@ -271,16 +319,41 @@ interface QuizQuestion {
 }
 ```
 
+### `QuizRecord`（测验记录）
+
+```typescript
+interface QuizRecord {
+  id: string;                      // 唯一 ID
+  date: string;                    // ISO 日期字串
+  score: number;                   // 答对题数
+  total: number;                   // 总题数
+  percentage: number;              // 正确率（0-100）
+  answers: QuizAnswerRecord[];     // 逐题明细
+}
+
+interface QuizAnswerRecord {
+  question: string;       // 题目
+  options: string[];      // 选项
+  correctAnswer: number;  // 正确答案索引
+  selectedAnswer: number; // 使用者选择索引
+  explanation: string;    // 解释
+  isCorrect: boolean;     // 是否答对
+}
+```
+
 ---
 
 ## 🔮 未来展望
 
 - [ ] 增加拼音拼写练习（拼读组合练习）
-- [ ] 加入学习进度追踪与帐号系统（串接 Prisma + PostgreSQL）
+- [ ] 将测验记录迁移至 Prisma + PostgreSQL（搭配帐号系统，跨装置同步）
+- [ ] 新增「错题本」：自动汇整历史错题供集中复习
 - [ ] 增加更多题型的测验（听力辨识、填空等）
 - [ ] 支援繁简体切换
 - [ ] 加入语音辨识功能，让学习者练习发音并即时纠正
 - [ ] 新增学习成就系统与徽章奖励
+- [ ] 测验记录匯出 / 匯入（JSON 格式），方便跨装置转移
+- [ ] 图表化学习曲线（折线图显示成绩趋势）
 
 ---
 
